@@ -1,12 +1,14 @@
-require('dotenv').config();
-let mysql = require("mysql");
-let Table = require('cli-table');
-let inquirer = require("inquirer");
-let database;
+require("dotenv").config(); // Dotenv is a zero-dependency module that loads environment variables from a .env file into process.env.
+const mysql = require("mysql"); // mysql npm used for connecting to the db
+const inquirer = require("inquirer"); // inquirer included used for user prompts
+const Table = require("cli-table"); // Table display in cli
+let colors = require('colors'); // color text in cli
+
 let db;
+let nQty;
 
 
-// Checking products in the DB
+// Displaying available Products in the DB
 let checkProducts = function() {
 
     // Connecting to the DB
@@ -20,10 +22,9 @@ let checkProducts = function() {
     db.connect(function(err) {
         if (err) throw err;
         console.log("We are Connected with id " + db.threadId);
-        // Checking Available Production and Start the App
     });
 
-    let query = "SELECT * FROM products";
+    let query = "SELECT item_id,product_name,department_name, price, quantity FROM products";
 
     db.query(query, function(err, res) {
         if (err) throw err;
@@ -56,7 +57,7 @@ let checkProducts = function() {
                     buyProduct();
                     break;
                 default:
-                    console.log('----- Thank You For Your Visit ----');
+                    console.log('----- Thank You For Your Visit ----'.green);
                     db.end();
             }
         });
@@ -64,7 +65,33 @@ let checkProducts = function() {
 
 };
 
+// Function that Update product
+let updateProductQuantities = function(item, qtyA, qtyND, trans) {
 
+    if (trans === "SELL") {
+
+        nQty = qtyA - qtyND;
+
+    } else {
+
+        nQty = qtyA + qtyND;
+    }
+
+    let query = "UPDATE products SET? WHERE?";
+    db.query(query, [{
+                quantity: nQty
+            },
+            {
+                item_id: parseInt(item)
+            }
+        ],
+        function(err, res) {
+            if (err) throw err;
+            console.log(`${res.affectedRows} products updated!`);
+        });
+
+};
+// Function used to buy Products
 let buyProduct = function() {
 
     inquirer.prompt([{
@@ -88,7 +115,7 @@ let buyProduct = function() {
             }
         }
     ]).then(function(answer) {
-        let qty = parseInt(answer.quantity, 10);
+        let qtyND = parseInt(answer.quantity, 10);
         let productID = answer.productID;
 
         let queryQtyAvailable = "SELECT quantity FROM products WHERE?";
@@ -96,15 +123,14 @@ let buyProduct = function() {
             if (err) throw err;
 
             let qPA = res[0].quantity;
-            if (qPA < qty) {
-                console.log("There is not enough stock for the amount you choose. Please select another item or reduce the amount.");
+            if (qPA < qtyND) {
+                console.log("There is not enough stock for the amount you choose. Please select another Item or Reduce the Amount.".red);
                 buyProduct();
             } else {
                 console.log("We got this");
+                updateProductQuantities(productID, qPA, qtyND, "SELL");
 
             }
-
-            console.log();
         })
 
         // console.log(qty);
