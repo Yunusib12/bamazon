@@ -8,6 +8,7 @@ let db;
 let nQty;
 let quantities = [];
 let shopingCart = [];
+let localDB;
 
 
 // Displaying available Products in the DB
@@ -42,6 +43,7 @@ let checkProducts = function() {
         res.forEach(elem => {
             table.push([elem.item_id, elem.product_name, elem.department_name, `$ ${elem.price}`, elem.quantity]);
         });
+
         console.log(table.toString());
         // database = res;
         inquirer.prompt([{
@@ -52,10 +54,10 @@ let checkProducts = function() {
         }]).then(function(choice) {
             switch (choice.whouare) {
                 case 'Manager':
-                    console.log("Your ar a Manager");
+                    console.log("Manager Dashboard");
                     break;
                 case 'Customer':
-                    console.log("You are a Customer");
+                    console.log("Welcome Dear Customer");
                     buyProduct();
                     break;
                 default:
@@ -69,12 +71,27 @@ let checkProducts = function() {
 
 // Function that addProduct to Shoping Cart
 let addProductToCart = function(productID, quantity) {
+    // console.log(productID, quantity);
 
-    shopingCart.push(productID);
+    new Promise((resolve, reject) => {
+
+        let queryP = "SELECT item_id, product_name, department_name, price FROM products WHERE?";
+
+        db.query(queryP, {
+                item_id: productID
+            },
+            function(err, res) {
+                if (err) reject(err);
+                shopingCart.push(res);
+            })
+        return resolve()
+    }).then(() => {
+
+        // console.log("SC", resolve);
+
+    }).catch(console.log)
+
     quantities.push(quantity);
-
-    console.log(shopingCart);
-    console.log(quantities);
 };
 
 // Function for checkout
@@ -83,44 +100,28 @@ let checkOut = function() {
 
     let total = 0;
 
-    console.log(`
------ We are processing your order ----------`.yellow);
+    console.log(`\n----- We are processing your order ----------\n`.yellow);
 
     setTimeout(function() {
 
-        console.log(`
-Thanks for shopping with us!
-Here is the sumary of your purchase`.green);
+        console.log(`\nThanks for shopping with us! \nHere is the sumary of your purchase\n`.green);
 
         let tableC = new Table({
-            head: ['Product ID', 'Item', 'Department', 'Total Price'],
-            colWidths: [15, 35, 35, 15]
+            head: ['Product ID', 'Item', 'Department', 'Qty', 'Total Price'],
+            colWidths: [13, 33, 33, 10, 15]
         });
 
-        shopingCart.forEach(function(productID, index) {
+        shopingCart.forEach(function(prod, index) {
 
-            let queryP = "SELECT item_id, product_name, department_name, price FROM products WHERE?";
-            db.query(queryP, {
-                    item_id: productID
-                },
-                function(err, res) {
-                    if (err) throw err;
-                    console.log(res[0].item_id, res[0].product_name, res[0].department_name, res[0].price * quantities[index]);
-                    // console.log(res[index].item_id);
-                    tableC.push([res[0].item_id, res[0].product_name, res[0].department_name, res[0].price * quantities[index]]);
-                    total = total + parseFloat(res[0].price, 10) * quantities[index];
-                    console.log(total);
-                })
+            let tPrice = "$ " + prod[0].price * quantities[index];
+
+            tableC.push([prod[0].item_id, prod[0].product_name, prod[0].department_name, quantities[index], tPrice]);
+            total += parseFloat(prod[0].price, 10) * quantities[index];
         })
-        console.log(tableC.toString());
-        console.log(`
-            
-============ Your Total: $ ${total} ==============
-                                
-                                `.blue);
 
-        // console.log(productID);
-        //console.log(quantities[index]);
+        console.log(tableC.toString());
+        console.log(`\nYour total: $ ${total}`.red);
+        db.end();
     }, 2000);
 
 };
@@ -187,7 +188,7 @@ let buyProduct = function() {
                 console.log("There is not enough stock for the amount you choose. Please select another Item or Reduce the Amount.".red);
                 buyProduct();
             } else {
-                //console.log("We got this");
+                //console.log("We got this" + productID);
                 updateProductQuantities(productID, qPA, qtyND, "SELL");
                 addProductToCart(productID, qtyND);
 
@@ -207,21 +208,12 @@ let buyProduct = function() {
                 });
             };
         });
-
-        // console.log(qty);
-        // console.log(productID);
-        // console.log(database[answer.productID - 1].quantity);
     })
 
 };
 
 
-
-
-
-
-
-
+// Module Export
 module.exports = {
     checkProducts: checkProducts,
     buyProduct: buyProduct
