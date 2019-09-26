@@ -165,7 +165,7 @@ let buyProduct = function() {
             message: 'Please choose a product you would like to buy?',
             validate: function(value) {
 
-                var valid = !isNaN(parseFloat(value));
+                let valid = !isNaN(parseFloat(value));
                 return valid || "Only Numbers are allowed";
             }
         },
@@ -175,7 +175,7 @@ let buyProduct = function() {
             message: 'How many units would you like to buy?',
             validate: function(value) {
 
-                var valid = !isNaN(parseFloat(value));
+                let valid = !isNaN(parseFloat(value));
                 return valid || "Only Numbers are allowed";
             }
         }
@@ -237,30 +237,139 @@ let productSale = function() {
         });
 
         console.log(table.toString());
-        db.end();
+        // db.end();
     });
 
-    // inquirer.prompt([{
-    //     message: 'Product Sale Menu',
-    //     name: 'productSaleM',
-    //     type: 'list',
-    //     choices: ['Back to Manager Menu', 'Back to Main Menu', 'Exit']
-    // }]).then(function(choice) {
-    //     switch (choice.productSaleM) {
-    //         case 'Back to Manager Menu':
-    //             manager();
-    //             break;
-    //         case 'Back to Main Menu':
-    //             checkProducts();
-    //             break;
-    //         case 'Exit':
-    //             db.end();
-    //             break;
-    //     }
-    // });
+    inquirer.prompt([{
+        message: 'Product Sale Menu',
+        name: 'productSaleM',
+        type: 'list',
+        choices: ['Back to Manager Menu', 'Back to Main Menu', 'Exit']
+    }]).then(function(choice) {
+        switch (choice.productSaleM) {
+            case 'Back to Manager Menu':
+                manager();
+                break;
+            case 'Back to Main Menu':
+                checkProducts();
+                break;
+            case 'Exit':
+                db.end();
+                break;
+        }
+    });
 
 };
 
+// Add item to inventory
+
+let addInventory = function(newItem) {
+    if (newItem) {
+        console.log('Enter the new product information:')
+        inquirer.prompt([{
+                message: 'Name?',
+                name: 'name',
+                type: 'input',
+                validate: function(val) {
+                    if (!val == "") {
+                        return true;
+                    }
+                    return val = "Enter your the product Name".red
+                }
+            }, {
+                message: 'Department?',
+                name: 'department',
+                type: 'input',
+                validate: function(val) {
+                    if (!val == "") {
+                        return true;
+                    }
+                    return val = "Enter your the product Department".red
+                }
+            },
+            {
+                message: 'Price?',
+                name: 'price',
+                type: 'input',
+                validate: function(val) {
+                    if (!val == "") {
+                        return true;
+                    }
+                    return val = "Enter your the product Price".red
+                }
+            }, {
+                message: 'Stock Quantity??',
+                name: 'stock',
+                type: 'input',
+                validate: function(val) {
+                    if (!val == "") {
+                        return true;
+                    }
+                    return val = "Enter your the product Quantity".red
+                }
+            }
+        ]).then(function(choice) {
+            let price = parseFloat(choice.price);
+            let qty = parseInt(choice.stock);
+
+            let query = 'INSERT INTO products SET ?';
+
+            db.query(query, {
+                    product_name: choice.name,
+                    department_name: choice.department,
+                    price: price,
+                    quantity: qty
+                },
+                function(err, res) {
+                    if (err) throw err;
+                    //console.log(res.affectedRows + " product inserted!\n");
+                    console.log(`\n=========== ${res.affectedRows} New item added. ===========\n`.green);
+                    setTimeout(manager, 2000);
+                });
+        });
+    } else {
+        inquirer.prompt([{
+            message: 'Which item would you like to add?',
+            name: 'addItem',
+            type: 'input',
+            validate: function(value) {
+
+                let valid = !isNaN(parseFloat(value));
+                return valid || "Only Numbers are allowed";
+            }
+
+        }, {
+            message: 'How many units are added to the stock?',
+            name: 'addQty',
+            type: 'input',
+            validate: function(value) {
+
+                let valid = !isNaN(parseFloat(value));
+                return valid || "Only Numbers are allowed";
+            }
+        }]).then(function(choice) {
+            let item = parseInt(choice.addItem);
+            let qty = parseInt(choice.addQty);
+
+            let queryQtyAvailable = "SELECT quantity FROM products WHERE?";
+            db.query(queryQtyAvailable, {
+                    item_id: choice.addItem
+                },
+                function(err, res) {
+                    if (err) throw err;
+
+                    let qPA = res[0].quantity;
+
+                    updateProductQuantities(item, qPA, qty, "");
+
+                    console.log("\n============== Item Quantity Updated! ==================\n".green);
+
+                    setTimeout(manager, 2000);
+                });
+
+        });
+    }
+}
 
 
 let lowInventory = function() {
@@ -271,18 +380,25 @@ let lowInventory = function() {
         function(err, res) {
             if (err) throw err;
 
-            let table = new Table({
-                head: ["Product ID", "Name", "Department", "Price", "Stock Qty"],
-                colWidths: [15, 35, 35, 15, 15]
+            if (res.length === 0) {
 
-            });
+                console.log("\n===== No Product that are running low ======\n".yellow);
 
-            res.forEach(elem => {
-                table.push([elem.item_id, elem.product_name, elem.department_name, `$ ${elem.price}`, elem.quantity]);
-            });
+            } else {
 
-            console.log(table.toString());
-            db.end();
+                let table = new Table({
+                    head: ["Product ID", "Name", "Department", "Price", "Stock Qty"],
+                    colWidths: [15, 35, 35, 15, 15]
+
+                });
+
+                res.forEach(elem => {
+                    table.push([elem.item_id, elem.product_name, elem.department_name, `$ ${elem.price}`, elem.quantity]);
+                });
+
+                console.log(table.toString());
+                //db.end();
+            }
         });
 
     inquirer.prompt([{
@@ -291,13 +407,27 @@ let lowInventory = function() {
         type: 'list',
         choices: ['Add to existing stock', 'Create new item', 'Exit']
     }]).then(function(choice) {
-        if (choice.addInventory === 'Add to existing stock ') {
-            addInventory(false);
-        } else if (choice.addInventory === 'Create new item') {
-            addInventory(true);
-        } else {
-            db.end();
+        switch (choice.addInventory) {
+            case "Add to existing stock":
+                console.log('Add to existing stock');
+                addInventory(false);
+                break;
+            case "Create new item":
+                addInventory(true);
+                break;
+            case "Exit":
+                db.end();
+                break;
+            default:
+                console.log("No choice Selected");
         }
+        // if (choice.addInventory === 'Add to existing stock ') {
+        //     addInventory(false);
+        // } else if (choice.addInventory === 'Create new item') {
+        //     addInventory(true);
+        // } else {
+        //     db.end();
+        // }
     });
 };
 
@@ -312,7 +442,7 @@ let manager = function() {
         message: 'Option Menu',
         name: 'menuOpt',
         type: 'list',
-        choices: ['View Products for Sale', 'View Low Inventory', 'Add to Inventory', 'Add New Product']
+        choices: ['View Products for Sale', 'View Low Inventory', 'Main Menu', 'Exit']
     }]).then(function(choice) {
         switch (choice.menuOpt) {
             case ('View Products for Sale'):
@@ -321,11 +451,11 @@ let manager = function() {
             case ('View Low Inventory'):
                 lowInventory();
                 break;
-            case ('Add to Inventory'):
-                console.log("Add to Inventory");
+            case ('Main Menu'):
+                checkProducts();
                 break;
-            case ('Add New Product'):
-                console.log("Add New Product");
+            case ('Exit'):
+                db.end();
                 break;
             default:
                 console.log("No Choice selected");
