@@ -2,19 +2,16 @@ require("dotenv").config(); // Dotenv is a zero-dependency module that loads env
 const mysql = require("mysql"); // mysql npm used for connecting to the db
 const inquirer = require("inquirer"); // inquirer included used for user prompts
 const Table = require("cli-table"); // Table display in cli
-let colors = require('colors'); // color text in cli
+const colors = require('colors'); // color text in cli
 
 let db;
 let nQty;
 let quantities = [];
 let shopingCart = [];
-let localDB;
 
+// DB Connect
+let dbCon = function() {
 
-// Displaying available Products in the DB
-let checkProducts = function() {
-
-    // Connecting to the DB
     db = mysql.createConnection({
         host: process.env.DB_HOSTNAME,
         user: process.env.DB_USERNAME,
@@ -25,7 +22,13 @@ let checkProducts = function() {
     db.connect(function(err) {
         if (err) throw err;
         console.log("We are Connected with id " + db.threadId);
+        checkProducts();
     });
+
+};
+
+// Displaying available Products in the DB
+let checkProducts = function() {
 
     let query = "SELECT item_id,product_name,department_name, price, quantity FROM products";
 
@@ -54,7 +57,8 @@ let checkProducts = function() {
         }]).then(function(choice) {
             switch (choice.whouare) {
                 case 'Manager':
-                    console.log("Manager Dashboard");
+                    // console.log("Manager Dashboard");
+                    manager();
                     break;
                 case 'Customer':
                     console.log("Welcome Dear Customer");
@@ -212,9 +216,126 @@ let buyProduct = function() {
 
 };
 
+let productSale = function() {
 
-// Module Export
+
+    let query = "SELECT item_id,product_name,department_name, price, quantity FROM products";
+
+    db.query(query, function(err, res) {
+        if (err) throw err;
+
+        //console.log(res);
+
+        let table = new Table({
+            head: ["Product ID", "Name", "Department", "Price", "Stock Qty"],
+            colWidths: [15, 35, 35, 15, 15]
+
+        });
+
+        res.forEach(elem => {
+            table.push([elem.item_id, elem.product_name, elem.department_name, `$ ${elem.price}`, elem.quantity]);
+        });
+
+        console.log(table.toString());
+        db.end();
+    });
+
+    // inquirer.prompt([{
+    //     message: 'Product Sale Menu',
+    //     name: 'productSaleM',
+    //     type: 'list',
+    //     choices: ['Back to Manager Menu', 'Back to Main Menu', 'Exit']
+    // }]).then(function(choice) {
+    //     switch (choice.productSaleM) {
+    //         case 'Back to Manager Menu':
+    //             manager();
+    //             break;
+    //         case 'Back to Main Menu':
+    //             checkProducts();
+    //             break;
+    //         case 'Exit':
+    //             db.end();
+    //             break;
+    //     }
+    // });
+
+};
+
+
+
+let lowInventory = function() {
+
+    let query = "SELECT item_id,product_name,department_name, price, quantity FROM products WHERE quantity < ?";
+    let qty = 5;
+    db.query(query, qty,
+        function(err, res) {
+            if (err) throw err;
+
+            let table = new Table({
+                head: ["Product ID", "Name", "Department", "Price", "Stock Qty"],
+                colWidths: [15, 35, 35, 15, 15]
+
+            });
+
+            res.forEach(elem => {
+                table.push([elem.item_id, elem.product_name, elem.department_name, `$ ${elem.price}`, elem.quantity]);
+            });
+
+            console.log(table.toString());
+            db.end();
+        });
+
+    inquirer.prompt([{
+        message: 'Add inventory?',
+        name: 'addInventory',
+        type: 'list',
+        choices: ['Add to existing stock', 'Create new item', 'Exit']
+    }]).then(function(choice) {
+        if (choice.addInventory === 'Add to existing stock ') {
+            addInventory(false);
+        } else if (choice.addInventory === 'Create new item') {
+            addInventory(true);
+        } else {
+            db.end();
+        }
+    });
+};
+
+
+// Manager Prompt
+
+let manager = function() {
+
+    console.log("\n======= Welcome to the Manager Dashboard ========\n".green);
+
+    inquirer.prompt([{
+        message: 'Option Menu',
+        name: 'menuOpt',
+        type: 'list',
+        choices: ['View Products for Sale', 'View Low Inventory', 'Add to Inventory', 'Add New Product']
+    }]).then(function(choice) {
+        switch (choice.menuOpt) {
+            case ('View Products for Sale'):
+                productSale();
+                break;
+            case ('View Low Inventory'):
+                lowInventory();
+                break;
+            case ('Add to Inventory'):
+                console.log("Add to Inventory");
+                break;
+            case ('Add New Product'):
+                console.log("Add New Product");
+                break;
+            default:
+                console.log("No Choice selected");
+                break;
+        }
+    })
+
+};
+
+
 module.exports = {
-    checkProducts: checkProducts,
-    buyProduct: buyProduct
+    dbCon: dbCon
 }

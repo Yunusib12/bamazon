@@ -3,4 +3,4 @@
 
 const func = require("./assets/js/functions"); // Importing the function file
 
-func.checkProducts();
+func.dbCon();
