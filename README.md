@@ -36,7 +36,7 @@ DB_NAME=""
 
 #### Functionality Details
 
-![Screenshot](./assets/images/liri-fonctionalities.png)
+![Screenshot](./assets/images/functionalities-Bamazon.png)
 
 **1. Customer Interface**
 
