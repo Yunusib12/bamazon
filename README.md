@@ -15,7 +15,7 @@ needed, and even add new items to your inventory!
 
 ### BAMAZON in action
 
-<img src="/assets/images/Bamazon.gif?raw=true">
+<img src="./assets/images/Bamazon.gif?raw=true">
 
 ### Want to Try? 
 
